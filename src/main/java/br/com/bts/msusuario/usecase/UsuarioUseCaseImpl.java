@@ -2,12 +2,14 @@ package br.com.bts.msusuario.usecase;
 
 import br.com.bts.msusuario.usecase.domain.Usuario;
 import br.com.bts.msusuario.usecase.gateway.UsuarioGateway;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -35,18 +37,80 @@ public class UsuarioUseCaseImpl implements UsuarioUseCase {
             throw new RuntimeException("A data de nascimento informada nao pode ser igual ou futura a data atual.");
         }
 
-        Optional<GeneroEnum> generoEnum = GeneroEnum.buscarDadosGenero(usuarioRequest);
-
-        if (generoEnum.isEmpty()) {
-            throw new RuntimeException("A sigla do genêro informada não é aceita na plataforma.");
-        }
+        GeneroEnum generoEnum = GeneroEnum.buscarDadosGenero(usuarioRequest)
+                .orElseThrow(() -> new RuntimeException("A sigla do genêro informada não é aceita na plataforma."));
 
         usuarioRequest.setId(UUID.randomUUID().toString());
-        usuarioRequest.getGenero().setCodigo(generoEnum.get().getCodigo());
+        usuarioRequest.getGenero().setCodigo(generoEnum.getCodigo());
         usuarioRequest.setDataCadastro(gerarDataHoraFormatada());
 
-        Usuario usuarioResult = usuarioGateway.salvarUsuarioDB(usuarioRequest);
-        usuarioResult.getGenero().setSigla(generoEnum.get().getSigla());
+        Usuario usuarioResult = usuarioGateway.salvarUsuario(usuarioRequest);
+        usuarioResult.getGenero().setSigla(generoEnum.getSigla());
+
+        return usuarioResult;
+    }
+
+    @Override
+    public List<Usuario> buscarUsuarios() {
+        return usuarioGateway.buscarUsuarios();
+    }
+
+    @Override
+    public Usuario buscarUsuario(String idUsuario) {
+        return usuarioGateway.buscarUsuario(idUsuario)
+                .orElseThrow(() -> new RuntimeException("O usuario informado nao tem cadastro na plataforma."));
+    }
+
+    @Override
+    public void deletarUsuario(String idUsuario) {
+        usuarioGateway.buscarUsuario(idUsuario)
+                .orElseThrow(() -> new RuntimeException("O usuario informado nao tem cadastro na plataforma."));
+
+        usuarioGateway.deletarUsuarioPorId(idUsuario);
+    }
+
+    @Override
+    public Usuario atualizarUsuario(String idUsuario, Usuario usuarioRequest) {
+        var usuarioDb = usuarioGateway.buscarUsuario(idUsuario)
+                .orElseThrow(() -> new RuntimeException("O usuario informado nao tem cadastro na plataforma."));
+
+        if (StringUtils.isNotBlank(usuarioRequest.getNomeCompleto())) {
+            usuarioDb.setNomeCompleto(usuarioRequest.getNomeCompleto());
+        }
+
+        if (StringUtils.isNotBlank(usuarioRequest.getApelido())) {
+            usuarioDb.setApelido(usuarioRequest.getApelido());
+        }
+
+        if (StringUtils.isNotBlank(usuarioRequest.getDataNascimento())) {
+            usuarioDb.setDataNascimento(usuarioRequest.getDataNascimento());
+        }
+
+        if (Objects.nonNull(usuarioRequest.getCelular())) {
+            usuarioDb.setCelular(usuarioRequest.getCelular());
+        }
+
+        if (StringUtils.isNotBlank(usuarioRequest.getGenero().getSigla())) {
+            var generoEnum = GeneroEnum.buscarDadosGenero(usuarioRequest)
+                    .orElseThrow(() -> new RuntimeException("A sigla do genêro informada não é aceita na plataforma."));
+
+            usuarioDb.getGenero().setCodigo(generoEnum.getCodigo());
+        }
+
+        if (Objects.nonNull(usuarioRequest.getEndereco())) {
+            usuarioDb.setEndereco(usuarioRequest.getEndereco());
+        }
+
+        usuarioDb.setDataAtualizacao(gerarDataHoraFormatada());
+
+        var usuarioResult = usuarioGateway.atualizarUsuario(usuarioDb);
+
+        if (StringUtils.isNotBlank(usuarioRequest.getGenero().getSigla())) {
+            var generoEnum = GeneroEnum.buscarDadosGenero(usuarioRequest)
+                    .orElseThrow(() -> new RuntimeException("A sigla do genêro informada não é aceita na plataforma."));
+
+            usuarioResult.getGenero().setSigla(generoEnum.getSigla());
+        }
 
         return usuarioResult;
     }

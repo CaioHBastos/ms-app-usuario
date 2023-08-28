@@ -1,10 +1,12 @@
 package br.com.bts.msusuario.dataprovider.mapper;
 
 import br.com.bts.msusuario.dataprovider.entity.UsuarioEntity;
-import br.com.bts.msusuario.usecase.domain.Genero;
 import br.com.bts.msusuario.usecase.domain.Usuario;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class UsuarioDataProviderMapper {
@@ -21,8 +23,15 @@ public class UsuarioDataProviderMapper {
                 .celular(usuarioRequest.getCelular())
                 .genero(usuarioRequest.getGenero().getCodigo())
                 .dataCadastro(usuarioRequest.getDataCadastro())
+                .dataAtualizacao(usuarioRequest.getDataAtualizacao())
                 .endereco(EnderecoDataProviderMapper.toEntity(usuarioRequest.getEndereco()))
                 .build();
+    }
+
+    public static List<Usuario> toDomain(List<UsuarioEntity> usuariosEntity) {
+        return usuariosEntity.stream()
+                .map(UsuarioDataProviderMapper::toDomain)
+                .collect(Collectors.toList());
     }
 
     public static Usuario toDomain(UsuarioEntity usuarioCadastrado) {
